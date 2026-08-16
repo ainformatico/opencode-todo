@@ -1,0 +1,5 @@
+node_modules/
+*.tgz
+.opencode/queue.json
+.opencode/node_modules/
+.opencode/package-lock.json

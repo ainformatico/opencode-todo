@@ -1,0 +1,62 @@
+{
+  "name": "opencode-todo",
+  "version": "0.0.1",
+  "description": "A personal task backlog for OpenCode, for you, not the agent.",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ainformatico/opencode-todo.git"
+  },
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "todo",
+    "backlog",
+    "task-queue"
+  ],
+  "files": [
+    "src"
+  ],
+  "exports": {
+    "./server": "./src/server.ts",
+    "./tui": "./src/tui.tsx"
+  },
+  "scripts": {
+    "test": "node --test \"test/*.test.ts\"",
+    "lint": "oxlint src test",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run typecheck && npm run lint && npm test"
+  },
+  "peerDependencies": {
+    "@opentui/core": ">=0.4.5",
+    "@opentui/solid": ">=0.4.5",
+    "solid-js": ">=1.9.0"
+  },
+  "peerDependenciesMeta": {
+    "@opentui/core": {
+      "optional": true
+    },
+    "@opentui/solid": {
+      "optional": true
+    },
+    "solid-js": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "opencode": ">=1.18.0",
+    "node": ">=22.18"
+  },
+  "devDependencies": {
+    "@opencode-ai/plugin": "^1.18.0",
+    "@opencode-ai/sdk": "^1.18.0",
+    "@opentui/core": "^0.5.6",
+    "@opentui/keymap": "^0.5.6",
+    "@opentui/solid": "^0.5.6",
+    "@types/node": "^24.0.0",
+    "oxlint": "^1.79.0",
+    "solid-js": "1.9.12",
+    "typescript": "^5.9.3"
+  }
+}
