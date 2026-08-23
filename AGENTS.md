@@ -40,12 +40,16 @@ deleted session's items are purged via the `session.deleted` event.
   was the original "picker selection never reached the composer" bug.
 - **No comments.** Code stays comment-free; document tradeoffs and behavior
   in this file, the README, or tests instead.
-- **The `@opentui/*` + `solid-js` peer deps must stay optional**, and
-  `@opencode-ai/plugin` stays a devDependency (types-only). The OpenCode host
-  provides the renderer and keymap instances at runtime; if npm installs a
-  nested copy of these packages into the plugin tree, slot rendering breaks
-  silently (duplicate renderer context). Never "fix" the empty runtime
-  dependencies.
+- **`@opentui/*` + `solid-js` must stay non-optional peerDependencies**, and
+  `@opencode-ai/plugin` stays a devDependency (types-only). TUI plugins'
+  `.tsx` compiles to `@opentui/solid/jsx-dev-runtime` and imports `solid-js`
+  at load time; both must resolve from the plugin's install directory
+  (opencode's plugin cache or the dev repo's `node_modules`). With optional
+  peers nothing gets installed and the plugin dies with
+  `Cannot find module '@opentui/solid/jsx-dev-runtime'` (verified against
+  1.18.15; this is why 0.0.1 never loaded). Duplicate-runtime risk is
+  handled by the host: `@opentui/solid/runtime-plugin-support` rewrites
+  those specifiers to the host's own copies when they resolve on disk.
 - **Plugin ids are `opencode-todo.server` / `opencode-todo.tui`.** They are the
   user-visible runtime identity and the keys in `plugin_enabled` config;
   renaming them post-publish silently breaks users' enable/disable toggles.
