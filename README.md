@@ -3,6 +3,8 @@
 A personal task backlog for [OpenCode](https://opencode.ai), for you, not the
 agent.
 
+![Adding, running, and clearing tasks](assets/demo.gif)
+
 ## The problem
 
 You're watching an agent refactor the auth middleware when it hits you: "after
