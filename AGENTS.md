@@ -132,6 +132,13 @@ break:
   "My Backlog" header to toggle when the session has more than 2 items
   (arrow + count shown while collapsed); the state persists via `api.kv`
   (`todo.backlog_expanded`).
+- **Sidebar updates ride `api.kv`, not solid reactivity.** For npm-installed
+  TUI plugins, opencode's solid bridging renders the initial tree but never
+  repaints it (upstream: anomalyco/opencode#32996, #33884 — verified on
+  1.18.15 and 1.18.25; dev/`file://` installs are unaffected). The slot
+  render reads `todo.backlog_rev` from `api.kv` — a host-reactive store —
+  and every `refresh()`/toggle bumps it, forcing the host to re-render the
+  panel. Keep that read+bump pair when touching the slot or `mutate()`.
 - **Shared state is the file.** Both processes read/write
   `.opencode/queue.json` through `src/store.ts`. Keep all writes atomic
   (see `writeAtomic`). Corrupt or unreadable queue files are quarantined as

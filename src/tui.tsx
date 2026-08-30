@@ -26,6 +26,11 @@ import {
 } from "./display.ts"
 
 const EXPANDED_KEY = "todo.backlog_expanded"
+const REV_KEY = "todo.backlog_rev"
+
+function bumpRev(api: TuiPluginApi) {
+  api.kv.set(REV_KEY, (api.kv.get(REV_KEY, 0) as number) + 1)
+}
 
 function currentSessionID(api: TuiPluginApi): string | undefined {
   const route = api.route.current
@@ -34,7 +39,7 @@ function currentSessionID(api: TuiPluginApi): string | undefined {
   return typeof sessionID === "string" ? sessionID : undefined
 }
 
-function BacklogPanel(props: { api: TuiPluginApi; items: () => store.QueueItem[]; sessionID: string }) {
+function BacklogPanel(props: { api: TuiPluginApi; items: () => store.QueueItem[]; sessionID: string; rev?: number }) {
   const theme = () => props.api.theme.current
   const [expanded, setExpanded] = createSignal(props.api.kv.get(EXPANDED_KEY, true))
   const mine = createMemo(() => props.items().filter((item) => item.sessionID === props.sessionID))
@@ -44,6 +49,7 @@ function BacklogPanel(props: { api: TuiPluginApi; items: () => store.QueueItem[]
     const next = !expanded()
     setExpanded(next)
     props.api.kv.set(EXPANDED_KEY, next)
+    bumpRev(props.api)
   }
   return (
     <box>
@@ -232,7 +238,10 @@ const tui: TuiPlugin = async (api) => {
   async function refresh() {
     const seq = ++refreshSeq
     const next = await store.loadAll(worktree)
-    if (seq === refreshSeq) setItems(next)
+    if (seq === refreshSeq) {
+      setItems(next)
+      bumpRev(api)
+    }
   }
   await refresh()
 
@@ -253,7 +262,8 @@ const tui: TuiPlugin = async (api) => {
     order: 350,
     slots: {
       sidebar_content(_ctx, props) {
-        return <BacklogPanel api={api} items={items} sessionID={props.session_id} />
+        const rev = api.kv.get(REV_KEY, 0) as number
+        return <BacklogPanel api={api} items={items} sessionID={props.session_id} rev={rev} />
       },
     },
   })
