@@ -35,8 +35,8 @@ export function statusMarker(status: QueueItem["status"]) {
   return status === STATUS_COMPLETED ? TICK : CIRCLE
 }
 
-export function statusColor(status: QueueItem["status"]): "success" | "textMuted" {
-  return status === STATUS_COMPLETED ? "success" : "textMuted"
+export function statusColor(status: QueueItem["status"]): "success" | "muted" {
+  return status === STATUS_COMPLETED ? "success" : "muted"
 }
 
 export type Numbered = { item: QueueItem; position: number }

@@ -57,7 +57,7 @@ describe("status glyphs and colors", () => {
 
   test("statusColor maps to theme keys", () => {
     assert.equal(statusColor("completed"), "success")
-    assert.equal(statusColor("pending"), "textMuted")
+    assert.equal(statusColor("pending"), "muted")
   })
 })
 

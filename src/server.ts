@@ -1,18 +1,27 @@
-import type { Plugin } from "@opencode-ai/plugin"
+import { Plugin } from "@opencode/plugin"
 import * as store from "./store.ts"
 
-const server: Plugin = async (input) => {
-  const worktree = input.worktree
-  return {
-    event: async ({ event }) => {
-      if (event.type !== "session.deleted") return
-      try {
-        await store.clear(worktree, event.properties.info.id)
-      } catch (error) {
-        console.error("[opencode-todo] failed to purge deleted session", error)
-      }
-    },
-  }
-}
+export default Plugin.define({
+  id: "opencode-todo.server",
+  async setup(ctx) {
+    const worktree = ctx.location.directory
+    const controller = new AbortController()
 
-export default { id: "opencode-todo.server", server }
+    void (async () => {
+      try {
+        for await (const event of ctx.event.subscribe({ signal: controller.signal })) {
+          if (event.type !== "session.deleted") continue
+          try {
+            await store.clear(worktree, event.data.sessionID)
+          } catch (error) {
+            console.error("[opencode-todo] failed to purge deleted session", error)
+          }
+        }
+      } catch (error) {
+        if (!controller.signal.aborted) console.error("[opencode-todo] event subscription failed", error)
+      }
+    })()
+
+    return () => controller.abort()
+  },
+})
