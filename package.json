@@ -16,7 +16,8 @@
     "task-queue"
   ],
   "files": [
-    "src"
+    "src",
+    "assets"
   ],
   "exports": {
     ".": "./src/server.ts",

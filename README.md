@@ -7,7 +7,7 @@
 A personal task backlog for [OpenCode](https://opencode.ai), for you, not the
 agent.
 
-![Adding, running, and clearing tasks](assets/demo.gif)
+![Parking follow-up tasks while the agent works, running one, and clearing the rest](assets/demo.gif)
 
 ## The problem
 
