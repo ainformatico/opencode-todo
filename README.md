@@ -75,4 +75,7 @@ npm test && npm run lint && npm run typecheck
 
 For local hacking, opencode discovers the plugin automatically from
 `.opencode/plugins/opencode-todo/`, which wires this checkout into a running
-OpenCode (`.ts`/`.tsx` files are loaded directly, no build step). MIT licensed.
+OpenCode (`.ts`/`.tsx` files are loaded directly). The published package
+ships a compiled TUI entry (`dist/tui.js`, built on `npm pack` by
+`npm run build:tui`) because OpenCode does not compile `.tsx` inside
+`node_modules`. MIT licensed.

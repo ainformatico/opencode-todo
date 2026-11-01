@@ -17,17 +17,20 @@
   ],
   "files": [
     "src",
+    "dist",
     "assets"
   ],
   "exports": {
     ".": "./src/server.ts",
-    "./tui": "./src/tui.tsx"
+    "./tui": "./dist/tui.js"
   },
   "scripts": {
     "test": "node --test \"test/*.test.ts\"",
     "lint": "oxlint src test",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "npm run typecheck && npm run lint && npm test"
+    "prepublishOnly": "npm run typecheck && npm run lint && npm test",
+    "build:tui": "node scripts/build-tui.mjs",
+    "prepack": "npm run build:tui"
   },
   "dependencies": {
     "@opencode/plugin": "^2.0.20"
@@ -42,11 +45,14 @@
     "node": ">=22.18"
   },
   "devDependencies": {
+    "@babel/core": "^7.29.7",
+    "@babel/preset-typescript": "^7.29.7",
     "@opencode/theme": "^2.0.32",
     "@opentui/core": "^0.6.6",
     "@opentui/keymap": "^0.6.6",
     "@opentui/solid": "^0.6.6",
     "@types/node": "^24.0.0",
+    "babel-preset-solid": "^1.9.16",
     "oxlint": "^1.79.0",
     "solid-js": "1.9.12",
     "typescript": "^5.9.3"

@@ -3,3 +3,4 @@ node_modules/
 .opencode/queue.json
 .opencode/node_modules/
 .opencode/package-lock.json
+dist/

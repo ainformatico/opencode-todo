@@ -56,28 +56,42 @@ v2 line.
   this back into `setup` unless the minimum host version rises past 2.0.32.
 - **No comments.** Code stays comment-free; document tradeoffs and behavior
   in this file, the README, or tests instead.
-- **`@opentui/*` + `solid-js` must stay non-optional peerDependencies**, and
-  `@opencode/plugin` is a runtime dependency (the plugin imports it at load
-  time). TUI plugins' `.tsx` compiles to `@opentui/solid/jsx-dev-runtime` and
-  imports `solid-js` at load time; both must resolve from the plugin's install
-  directory (opencode's plugin cache or the dev repo's `node_modules`). With
-  optional peers nothing gets installed and the plugin dies with
-  `Cannot find module '@opentui/solid/jsx-dev-runtime'` (verified against
-  1.18.15; this is why 0.0.1 never loaded). Duplicate-runtime risk is handled
-  by the host: `@opentui/solid/runtime-plugin-support` rewrites those
-  specifiers to the host's own copies when they resolve on disk.
+- **`@opentui/*` + `solid-js` stay non-optional peerDependencies**, and
+  `@opencode/plugin` is a runtime dependency (the server plugin imports it at
+  load time). The packaged TUI entry (`dist/tui.js`) imports none of the peers
+  directly — every runtime import is a host virtual id — but the dev entry
+  (`src/tui.tsx`) still compiles against them, and 0.0.1 died with
+  `Cannot find module '@opentui/solid/jsx-dev-runtime'` when they were
+  optional. Keep them until the raw-`.tsx` path is gone everywhere.
 - **`@opentui/*` peers are pinned to the `^0.6.6` line on purpose.** With
   `>=0.5.17`, a fresh npm install resolved `@opentui/solid` 0.8.1 while the
-  host (2.1.3) renders with its bundled 0.6.x runtime. Result: the plugin's
-  signals are created in a JSX runtime the host cannot observe — panels paint
-  once, then never update (commands and toasts still work, `queue.json`
-  writes correctly, the sidebar just stays stale). Reproduced with the
-  published 0.1.0 in a clean project: `/todo-add` toasted `Added "..."` and
-  `queue.json` held the item with the right session id, but the panel kept
-  showing "No tasks". Pinning to `^0.6.6` fixed it, verified frame-by-frame.
-  Re-verify against the host's bundled `@opentui` version before widening the
-  range or bumping it, and treat "sidebar renders once but never updates" as
-  the signature of a runtime mismatch, not a store bug.
+  host (2.1.3) renders with its bundled 0.6.x runtime. Keep them pinned until
+  the compiled-entry contract below is verified against the newer line.
+- **The TUI entry ships compiled, with host runtime ids.** `exports["./tui"]`
+  points at `dist/tui.js`, built by `scripts/build-tui.mjs` on `prepack`. The
+  build compiles `src/tui.tsx` with `babel-preset-solid` (`generate:
+  "universal"`) and rewrites every runtime import to its virtual host id
+  (`opentui:runtime-module:solid-js`, `opentui:runtime-module:%40opentui%2Fsolid`,
+  `opentui:runtime-module:%40opencode%2Fplugin%2Ftui`) — the same output the
+  host produces for local plugins. This is not optional. The host's Solid
+  transform skips every path containing `node_modules` (filter verified in the
+  2.1.3 binary), so a raw `.tsx` installed from npm is compiled by Bun's
+  React-style JSX transform instead. That output calls
+  `@opentui/solid/jsx-runtime`'s `jsx()`, which reads props once (`each=` and
+  `when=` become static values), and the generated import resolves to the
+  package's own `@opentui/solid` copy — a second runtime. Result: the panel
+  paints "No tasks" once and never updates while commands, toasts, and
+  `queue.json` all work. Upstream: anomalyco/opencode#39986 (open; fix pending
+  via an `include` option in anomalyco/opentui#1741), #48883; the v1 branch hit
+  the same bug (#32996, #33884) and papered over it with a kv revision bump.
+  Pinning `@opentui/*` (0.1.1) did not fix it. Editing `src/tui.tsx` requires
+  a rebuild/pack before the packaged entry changes; the build fails loudly if
+  the output keeps any bare runtime specifier or a JSX-runtime import. Local
+  dev (`.opencode/plugins/`, outside `node_modules`) still loads `src/tui.tsx`
+  through the host transform, so dev and packaged paths differ — always verify
+  a packaging change with `npm pack` plus an install under a `node_modules`
+  path. Drop the build once the upstream transform compiles plugin-cache
+  `.tsx` and `engines.opencode` requires that host.
 - **Plugin ids are `opencode-todo.server` / `opencode-todo.tui`.** They are the
   user-visible runtime identity and the keys in plugin enable/disable config;
   renaming them post-publish silently breaks users' toggles.
@@ -96,8 +110,10 @@ v2 line.
 - Typecheck: `npm run typecheck` (`tsc --noEmit`, strict, `tsconfig.json`).
   Tests and `src/*.ts` run directly via Node's type stripping; `src/tui.tsx`
   needs the Bun runtime, so it is verified by launching OpenCode in this repo.
+- Build TUI entry: `npm run build:tui` (writes `dist/`; runs automatically on
+  `prepack`).
 - npm package: `npm pack` then `npm publish` (`prepublishOnly` runs
-  typecheck + lint + test). The v2 line needs its own release version
+  typecheck + lint + test; `prepack` rebuilds `dist/`). The v2 line needs its own release version
   (0.0.3 and below are the v1 line).
 - Live verification: `opencode plugin list` shows the loaded server plugin;
   launch `opencode` in this repo to exercise the sidebar, commands, and
@@ -111,7 +127,10 @@ src/
   store.ts    <- shared storage module (pure, unit-tested, no plugin API)
   display.ts  <- pure display/ordering helpers (truncation, glyphs, sort orders)
   server.ts   <- server plugin (package export "."): purges on session.deleted
-  tui.tsx     <- TUI plugin (package export "./tui"): sidebar, dialogs, commands
+  tui.tsx     <- TUI plugin source: sidebar, dialogs, commands
+dist/         <- build output (gitignored): tui.js (package export "./tui")
+scripts/
+  build-tui.mjs <- compiles src/tui.tsx to dist/tui.js with host runtime ids
 .opencode/plugins/opencode-todo/
   index.ts    <- dev entry, re-exports src/server.ts
   tui.ts      <- dev entry, re-exports src/tui.tsx
@@ -143,14 +162,16 @@ that must not break:
   renaming it post-publish orphans every installed user.
 - `exports["."]` is the server entrypoint and `exports["./tui"]` the TUI
   entrypoint; both must keep existing and resolving to separate,
-  surface-exclusive modules (`.ts` and `.tsx` respectively).
+  surface-exclusive modules (`src/server.ts` and the compiled `dist/tui.js`).
 - `engines.opencode` is semver-checked on load for npm plugins; keep it at the
   oldest host version the code actually works on (currently `>=2.0.20`).
-- The published tarball must keep shipping `LICENSE`, `README.md`, and `src`
-  (`files` field plus npm auto-includes).
-- Raw `.ts`/`.tsx` in the tarball is correct: the plugin runtimes load them
-  via Bun/type-stripping. There is no build step; do not add one without a
-  story for hosts that cannot strip types.
+- The published tarball must keep shipping `LICENSE`, `README.md`, `src`, and
+  `dist` (`files` field plus npm auto-includes). `dist/` is gitignored and
+  produced by `prepack`, so never publish with `--ignore-scripts`.
+- The server entry ships as raw `.ts` (loaded via Bun/type-stripping). The
+  TUI entry must ship compiled (see the hard rule above); `dist/` carries
+  copies of `store.ts`, `display.ts`, and `consts.ts` so `dist/tui.js` keeps
+  its relative imports.
 
 ## Conventions and caveats
 
