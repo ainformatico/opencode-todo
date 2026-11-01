@@ -66,6 +66,18 @@ v2 line.
   1.18.15; this is why 0.0.1 never loaded). Duplicate-runtime risk is handled
   by the host: `@opentui/solid/runtime-plugin-support` rewrites those
   specifiers to the host's own copies when they resolve on disk.
+- **`@opentui/*` peers are pinned to the `^0.6.6` line on purpose.** With
+  `>=0.5.17`, a fresh npm install resolved `@opentui/solid` 0.8.1 while the
+  host (2.1.3) renders with its bundled 0.6.x runtime. Result: the plugin's
+  signals are created in a JSX runtime the host cannot observe — panels paint
+  once, then never update (commands and toasts still work, `queue.json`
+  writes correctly, the sidebar just stays stale). Reproduced with the
+  published 0.1.0 in a clean project: `/todo-add` toasted `Added "..."` and
+  `queue.json` held the item with the right session id, but the panel kept
+  showing "No tasks". Pinning to `^0.6.6` fixed it, verified frame-by-frame.
+  Re-verify against the host's bundled `@opentui` version before widening the
+  range or bumping it, and treat "sidebar renders once but never updates" as
+  the signature of a runtime mismatch, not a store bug.
 - **Plugin ids are `opencode-todo.server` / `opencode-todo.tui`.** They are the
   user-visible runtime identity and the keys in plugin enable/disable config;
   renaming them post-publish silently breaks users' toggles.
